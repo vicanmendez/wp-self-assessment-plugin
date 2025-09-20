@@ -1,0 +1,581 @@
+/* Estilos para el frontend del plugin WP Self Assessment */
+
+.wpsa-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.wpsa-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+}
+
+.wpsa-header h2 {
+    margin: 0 0 10px 0;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.wpsa-header p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 16px;
+}
+
+.wpsa-step {
+    display: none;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 30px;
+    margin-bottom: 20px;
+}
+
+.wpsa-step.active {
+    display: block;
+}
+
+.wpsa-step h3 {
+    margin: 0 0 20px 0;
+    color: #333;
+    font-size: 22px;
+    border-bottom: 2px solid #0073aa;
+    padding-bottom: 10px;
+}
+
+/* Paso 1: Selección de materias */
+.wpsa-materias-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.wpsa-materia-card {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.wpsa-materia-card:hover {
+    border-color: #0073aa;
+    box-shadow: 0 4px 12px rgba(0,115,170,0.15);
+    transform: translateY(-2px);
+}
+
+.wpsa-materia-card.selected {
+    border-color: #0073aa;
+    background: #e3f2fd;
+    box-shadow: 0 4px 12px rgba(0,115,170,0.2);
+}
+
+.wpsa-materia-card h4 {
+    margin: 0 0 10px 0;
+    color: #0073aa;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.wpsa-grado {
+    margin: 0 0 10px 0;
+    color: #666;
+    font-weight: 500;
+    background: #0073aa;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    display: inline-block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.wpsa-descripcion {
+    margin: 0;
+    color: #666;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+/* Paso 2: Configuración */
+.wpsa-form-group {
+    margin-bottom: 25px;
+}
+
+.wpsa-form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.wpsa-form-group input[type="text"],
+.wpsa-form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.wpsa-form-group input[type="text"]:focus,
+.wpsa-form-group textarea:focus {
+    outline: none;
+    border-color: #0073aa;
+    box-shadow: 0 0 0 3px rgba(0,115,170,0.1);
+}
+
+/* Niveles de dificultad */
+.wpsa-nivel-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.wpsa-nivel-option {
+    cursor: pointer;
+}
+
+.wpsa-nivel-option input[type="radio"] {
+    display: none;
+}
+
+.wpsa-nivel-card {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.wpsa-nivel-option input[type="radio"]:checked + .wpsa-nivel-card {
+    border-color: #0073aa;
+    background: #e3f2fd;
+    box-shadow: 0 4px 12px rgba(0,115,170,0.15);
+    transform: translateY(-2px);
+}
+
+.wpsa-nivel-card h4 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.wpsa-nivel-card p {
+    margin: 0 0 15px 0;
+    color: #666;
+    font-size: 13px;
+    line-height: 1.4;
+    flex-grow: 1;
+}
+
+.wpsa-nivel-badge {
+    font-size: 24px;
+    margin-top: 10px;
+}
+
+/* Estilos específicos por nivel */
+.wpsa-nivel-inicial {
+    border-left: 4px solid #28a745;
+}
+
+.wpsa-nivel-option input[type="radio"]:checked + .wpsa-nivel-inicial {
+    border-color: #28a745;
+    background: #d4edda;
+    box-shadow: 0 4px 12px rgba(40,167,69,0.15);
+}
+
+.wpsa-nivel-intermedio {
+    border-left: 4px solid #ffc107;
+}
+
+.wpsa-nivel-option input[type="radio"]:checked + .wpsa-nivel-intermedio {
+    border-color: #ffc107;
+    background: #fff3cd;
+    box-shadow: 0 4px 12px rgba(255,193,7,0.15);
+}
+
+.wpsa-nivel-avanzado {
+    border-left: 4px solid #dc3545;
+}
+
+.wpsa-nivel-option input[type="radio"]:checked + .wpsa-nivel-avanzado {
+    border-color: #dc3545;
+    background: #f8d7da;
+    box-shadow: 0 4px 12px rgba(220,53,69,0.15);
+}
+
+.wpsa-modalidad-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.wpsa-modalidad-option {
+    cursor: pointer;
+}
+
+.wpsa-modalidad-option input[type="radio"] {
+    display: none;
+}
+
+.wpsa-modalidad-card {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.wpsa-modalidad-option input[type="radio"]:checked + .wpsa-modalidad-card {
+    border-color: #0073aa;
+    background: #e3f2fd;
+    box-shadow: 0 4px 12px rgba(0,115,170,0.15);
+}
+
+.wpsa-modalidad-card h4 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.wpsa-modalidad-card p {
+    margin: 0;
+    color: #666;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+/* Botones de navegación */
+.wpsa-step-actions,
+.wpsa-evaluation-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: space-between;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.wpsa-question-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.button-primary {
+    background: #0073aa;
+    color: white;
+}
+
+.button-primary:hover {
+    background: #005a87;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,115,170,0.3);
+}
+
+.button-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.button-secondary:hover {
+    background: #545b62;
+    transform: translateY(-1px);
+}
+
+/* Paso 3: Evaluación */
+.wpsa-evaluation-info {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 25px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+}
+
+.wpsa-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.wpsa-info-item strong {
+    color: #666;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.wpsa-info-item span {
+    color: #333;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.wpsa-question-container {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 25px;
+    margin-bottom: 20px;
+}
+
+.wpsa-question h4 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.wpsa-question-content {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #333;
+}
+
+.wpsa-answer-container label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.wpsa-answer-container textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 15px;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.wpsa-answer-container textarea:focus {
+    outline: none;
+    border-color: #0073aa;
+    box-shadow: 0 0 0 3px rgba(0,115,170,0.1);
+}
+
+/* Paso 4: Resultados */
+.wpsa-results-summary {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.wpsa-score-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+}
+
+.wpsa-score-card h4 {
+    margin: 0 0 20px 0;
+    font-size: 18px;
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+.wpsa-score-display {
+    font-size: 48px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.wpsa-score-total {
+    font-size: 24px;
+    opacity: 0.8;
+}
+
+.wpsa-percentage {
+    font-size: 20px;
+    opacity: 0.9;
+}
+
+.wpsa-recommendations {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 25px;
+}
+
+.wpsa-recommendations h4 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.wpsa-recommendations-content {
+    color: #666;
+    line-height: 1.6;
+    font-size: 14px;
+}
+
+.wpsa-results-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+/* reCAPTCHA */
+.wpsa-recaptcha {
+    margin: 20px 0;
+    text-align: center;
+}
+
+/* Estados y mensajes */
+.wpsa-loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.wpsa-loading::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e9ecef;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.wpsa-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    border-radius: 6px;
+    padding: 15px;
+    margin: 20px 0;
+}
+
+.wpsa-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    border-radius: 6px;
+    padding: 15px;
+    margin: 20px 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .wpsa-container {
+        padding: 10px;
+    }
+    
+    .wpsa-materias-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .wpsa-modalidad-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .wpsa-results-summary {
+        grid-template-columns: 1fr;
+    }
+    
+    .wpsa-step-actions,
+    .wpsa-evaluation-actions,
+    .wpsa-results-actions {
+        flex-direction: column;
+    }
+    
+    .wpsa-evaluation-info {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Animaciones */
+.wpsa-step {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.wpsa-materia-card,
+.wpsa-modalidad-card {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}

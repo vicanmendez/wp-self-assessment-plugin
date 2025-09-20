@@ -1,0 +1,117 @@
+/* CSS para ocultar notificaciones molestas de otros plugins */
+
+/* Ocultar todas las notificaciones no deseadas */
+.notice:not(.notice-success.is-dismissible):not(.notice-error.is-dismissible) {
+    display: none !important;
+}
+
+/* Ocultar notificaciones específicas de WP Travel Engine */
+.notice[class*="wte"],
+.notice[class*="travel"],
+.notice[class*="wp-travel"],
+.notice[class*="travel-engine"] {
+    display: none !important;
+}
+
+/* Ocultar notificaciones por contenido de texto */
+.notice p:contains("WP Travel"),
+.notice p:contains("Travel Engine"),
+.notice p:contains("wte-"),
+.notice p:contains("travel-"),
+.notice p:contains("engine") {
+    display: none !important;
+}
+
+/* Ocultar notificaciones de actualización de plugins */
+.notice.notice-info,
+.notice.notice-warning,
+.notice[class*="update"],
+.notice[class*="upgrade"] {
+    display: none !important;
+}
+
+/* Ocultar notificaciones que aparecen en la parte superior */
+.wrap .notice:first-of-type,
+.wrap .notice:not(.is-dismissible) {
+    display: none !important;
+}
+
+/* Asegurar que nuestro botón de guardar sea siempre visible */
+.wpsa-save-button-container {
+    position: relative !important;
+    z-index: 99999 !important;
+    float: right;
+    margin-top: -50px;
+    margin-bottom: 20px;
+    background: white;
+    padding: 5px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.wpsa-save-button-container .button-primary {
+    position: relative !important;
+    z-index: 100000 !important;
+    font-size: 14px;
+    padding: 8px 16px;
+    height: auto;
+    line-height: 1.4;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0,115,170,0.2);
+    border: none;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    background: #0073aa;
+    color: white;
+    cursor: pointer;
+}
+
+.wpsa-save-button-container .button-primary:hover {
+    background: #005a87;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,115,170,0.3);
+}
+
+/* Forzar visibilidad de elementos importantes */
+.wp-heading-inline {
+    position: relative;
+    z-index: 99998;
+}
+
+.wrap h1 {
+    position: relative;
+    z-index: 99997;
+}
+
+.wrap .form-table {
+    position: relative;
+    z-index: 99996;
+}
+
+/* Ocultar notificaciones que se superponen */
+.notice {
+    position: relative;
+    z-index: 1;
+}
+
+/* Asegurar que el contenido principal esté por encima */
+.wrap {
+    position: relative;
+    z-index: 99995;
+}
+
+/* Ocultar notificaciones específicas por ID o clase */
+#wte-admin-notice,
+.wte-admin-notice,
+.travel-engine-notice,
+.wp-travel-notice {
+    display: none !important;
+}
+
+/* Ocultar notificaciones que contienen texto específico */
+.notice:has(p:contains("WP Travel")),
+.notice:has(p:contains("Travel Engine")),
+.notice:has(p:contains("wte-")),
+.notice:has(p:contains("travel-")) {
+    display: none !important;
+}
