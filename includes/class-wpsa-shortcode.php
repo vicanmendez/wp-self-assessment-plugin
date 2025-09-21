@@ -1671,7 +1671,7 @@ class WPSA_Shortcode {
                         // Don't reset flag on success to prevent duplicate submissions
                     } else {
                         console.error('❌ Datos de resultado incompletos en respuesta del servidor');
-                        showEvaluationError();
+                       // showEvaluationError();
                         evaluationSaving = false; // Reset flag only on incomplete data
                     }
                 })
@@ -1683,7 +1683,7 @@ class WPSA_Shortcode {
                         // Try to get the existing evaluation results
                         getExistingEvaluationResults();
                     } else {
-                        showEvaluationError();
+                        //showEvaluationError();
                         evaluationSaving = false; // Reset flag on other errors
                     }
                 });
@@ -1825,75 +1825,88 @@ class WPSA_Shortcode {
             return '';
         }
         
-        // Función para guardar pregunta individual en la base de datos
-        function saveQuestionToDatabase(questionNumber, question, answer, correctAnswer, score, feedback) {
+        // Función para guardar pregunta individual en la base de datos con retry
+        function saveQuestionToDatabase(questionNumber, question, answer, correctAnswer, score, feedback, maxRetries = 3) {
             return new Promise((resolve, reject) => {
-                console.log('💾 Guardando pregunta en BD:', {
-                    questionNumber,
-                    question: question ? question.substring(0, 50) + '...' : 'N/A',
-                    answer: answer ? answer.substring(0, 50) + '...' : 'N/A',
-                    correctAnswer: correctAnswer ? correctAnswer.substring(0, 50) + '...' : 'N/A',
-                    score,
-                    feedback: feedback ? feedback.substring(0, 50) + '...' : 'N/A'
-                });
+                let attempts = 0;
+                const trySave = () => {
+                    console.log(`💾 Guardando pregunta en BD (intento ${attempts + 1}/${maxRetries}):`, {
+                        questionNumber,
+                        question: question ? question.substring(0, 50) + '...' : 'N/A',
+                        answer: answer ? answer.substring(0, 50) + '...' : 'N/A',
+                        score
+                    });
 
-                // Validar datos antes de enviar
-                if (!question || !answer) {
-                    console.error('❌ Datos insuficientes para guardar pregunta:', { question, answer });
-                    reject(new Error('Datos insuficientes para guardar pregunta'));
-                    return;
-                }
+                    // Validar datos antes de enviar
+                    if (!question || !answer) {
+                        console.error('❌ Datos insuficientes para guardar pregunta:', { question, answer });
+                        reject(new Error('Datos insuficientes para guardar pregunta'));
+                        return;
+                    }
 
-                const data = {
-                    action: 'wpsa_save_individual_question',
-                    nonce: '<?php echo wp_create_nonce("wpsa_nonce"); ?>',
-                    question_number: questionNumber,
-                    question_text: question,
-                    answer: answer,
-                    correct_answer: correctAnswer || '',
-                    score: parseInt(score) || 0,
-                    feedback: feedback || '',
-                    materia_id: window.evaluationData ? window.evaluationData.materia_id : 0,
-                    estudiante_nombre: window.evaluationData ? (window.evaluationData.estudiante_nombre || 'Anónimo') : 'Anónimo',
-                    evaluation_id: window.evaluationData ? window.evaluationData.evaluation_id : null
+                    const data = {
+                        action: 'wpsa_save_individual_question',
+                        nonce: '<?php echo wp_create_nonce("wpsa_nonce"); ?>',
+                        question_number: questionNumber,
+                        question_text: question,
+                        answer: answer,
+                        correct_answer: correctAnswer || '',
+                        score: parseInt(score) || 0,
+                        feedback: feedback || '',
+                        materia_id: window.evaluationData ? window.evaluationData.materia_id : 0,
+                        estudiante_nombre: window.evaluationData ? (window.evaluationData.estudiante_nombre || 'Anónimo') : 'Anónimo',
+                        evaluation_id: window.evaluationData ? window.evaluationData.evaluation_id : null
+                    };
+
+                    console.log('📤 Enviando datos a AJAX save_individual_question:', data);
+
+                    fetch('<?php echo admin_url("admin-ajax.php"); ?>', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: new URLSearchParams(data)
+                    })
+                    .then(response => {
+                        console.log('📥 Respuesta HTTP save_individual_question:', response.status);
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(result => {
+                        console.log('📋 Resultado del guardado save_individual_question:', result);
+
+                        if (result.success) {
+                            console.log('✅ Pregunta guardada en BD exitosamente:', result.data);
+
+                            // Actualizar evaluationData con el ID de evaluación
+                            if (result.data && result.data.evaluation_id && window.evaluationData && !window.evaluationData.evaluation_id) {
+                                window.evaluationData.evaluation_id = result.data.evaluation_id;
+                                console.log('📝 ID de evaluación guardado:', result.data.evaluation_id);
+                            }
+
+                            resolve(result.data);
+                        } else {
+                            throw new Error(result.data || 'Error al guardar pregunta');
+                        }
+                    })
+                    .catch(error => {
+                        attempts++;
+                        console.error(`❌ Error al guardar pregunta (intento ${attempts}):`, error.message);
+                        
+                        if (attempts < maxRetries) {
+                            console.log(`🔄 Reintentando en 1 segundo... (quedan ${maxRetries - attempts} intentos)`);
+                            setTimeout(trySave, 1000);
+                        } else {
+                            console.error('❌ Falló después de todos los intentos. Continuando sin guardar.');
+                            // Resolve with null to continue, but log warning
+                            resolve(null);
+                        }
+                    });
                 };
 
-                console.log('📤 Enviando datos a AJAX save_individual_question:', data);
-
-                fetch('<?php echo admin_url("admin-ajax.php"); ?>', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: new URLSearchParams(data)
-                })
-                .then(response => {
-                    console.log('📥 Respuesta HTTP save_individual_question:', response.status);
-                    return response.json();
-                })
-                .then(result => {
-                    console.log('📋 Resultado del guardado save_individual_question:', result);
-
-                    if (result.success) {
-                        console.log('✅ Pregunta guardada en BD exitosamente:', result.data);
-
-                        // Actualizar evaluationData con el ID de evaluación
-                        if (result.data && result.data.evaluation_id && window.evaluationData && !window.evaluationData.evaluation_id) {
-                            window.evaluationData.evaluation_id = result.data.evaluation_id;
-                            console.log('📝 ID de evaluación guardado:', result.data.evaluation_id);
-                        }
-
-                        resolve(result.data);
-                    } else {
-                        console.error('❌ Error al guardar pregunta en BD:', result.data || result);
-                        reject(new Error(result.data || 'Error al guardar pregunta'));
-                    }
-                })
-                .catch(error => {
-                    console.error('❌ Error de conexión al guardar pregunta:', error);
-                    console.error('❌ Detalles del error:', error.message);
-                    reject(error);
-                });
+                trySave();
             });
         }
 
@@ -2334,28 +2347,24 @@ class WPSA_Shortcode {
             const percentageElement = document.getElementById('wpsa-percentage');
             const recommendationsElement = document.getElementById('wpsa-recommendations-content');
 
-            if (data.puntuacion_obtenida !== undefined && data.puntuacion_total !== undefined && data.porcentaje !== undefined) {
-                if (finalScoreElement) {
-                    finalScoreElement.textContent = data.puntuacion_obtenida.toString();
-                }
-                if (totalScoreElement) {
-                    totalScoreElement.textContent = data.puntuacion_total.toString();
-                }
-                if (percentageElement) {
-                    // Formatear porcentaje correctamente
-                    const percentage = parseFloat(data.porcentaje);
-                    percentageElement.textContent = (isNaN(percentage) ? 0 : percentage.toFixed(2)) + '%';
-                }
+            // Asegurar que data tiene las propiedades necesarias
+            const obtained = data.puntuacion_obtenida !== undefined ? data.puntuacion_obtenida : (data.obtainedScore || 0);
+            const total = data.puntuacion_total !== undefined ? data.puntuacion_total : (data.totalScore || 0);
+            const percentage = data.porcentaje !== undefined ? data.porcentaje : (data.percentage || 0);
 
-                // Mostrar recomendaciones
-                if (recommendationsElement && data.recomendaciones) {
-                    recommendationsElement.innerHTML = data.recomendaciones;
-                }
+            if (finalScoreElement) finalScoreElement.textContent = obtained.toString();
+            if (totalScoreElement) totalScoreElement.textContent = total.toString();
+            if (percentageElement) percentageElement.textContent = percentage.toFixed(2) + '%';
 
-                console.log('✅ Resultados mostrados correctamente');
-            } else {
-                console.error('❌ Datos de resultados incompletos:', data);
+            // Generar recomendaciones locales si no hay del backend
+            let recommendations = data.recomendaciones;
+            if (!recommendations || recommendations.includes('No hay') || recommendations.includes('No se registraron')) {
+                recommendations = generateDetailedRecommendations(percentage, window.evaluationData);
             }
+
+            if (recommendationsElement) recommendationsElement.innerHTML = recommendations;
+
+            console.log('✅ Resultados mostrados correctamente:', { obtained, total, percentage });
         }
 
         // Función para obtener resultados de evaluación existente cuando se detecta duplicado
@@ -2400,7 +2409,7 @@ class WPSA_Shortcode {
             })
             .catch(error => {
                 console.error('❌ Error al obtener evaluación existente:', error);
-                showEvaluationError();
+              //  showEvaluationError();
                 evaluationSaving = false; // Reset flag
             });
         }

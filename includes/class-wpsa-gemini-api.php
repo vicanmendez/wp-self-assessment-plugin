@@ -25,6 +25,8 @@ class WPSA_Gemini_API {
         $this->api_key = get_option('wpsa_gemini_api_key', '');
         error_log('🔍 WPSA Debug - API Key obtenida: ' . (!empty($this->api_key) ? 'Configurada (' . strlen($this->api_key) . ' caracteres)' : 'NO CONFIGURADA'));
     }
+
+    
     
     /**
      * Generar pregunta para autoevaluación
@@ -269,7 +271,7 @@ class WPSA_Gemini_API {
         // Generar variación única para evitar repetición
         $variacion_id = $this->generate_variation_id($materia, $numero_pregunta, $nivel);
         
-        $base_prompt = "Eres un profesor experto en {$materia}";
+        $base_prompt = "IMPORTANTE: SIGUE EXACTAMENTE LAS SIGUIENTES INSTRUCCIONES. Eres un profesor experto en {$materia}";
         
         if (!empty($grado)) {
             $base_prompt .= " para estudiantes de {$grado}";
@@ -322,10 +324,14 @@ class WPSA_Gemini_API {
         $base_prompt .= " con nivel de dificultad: {$nivel_instrucciones}";
         
         // Agregar instrucciones específicas sobre modalidad y nivel
-        $base_prompt .= "\n\nINSTRUCCIONES CRÍTICAS SOBRE MODALIDAD Y NIVEL:";
-        $base_prompt .= "\n- MODALIDAD SELECCIONADA: {$modalidad}";
-        $base_prompt .= "\n- NIVEL SELECCIONADO: {$nivel}";
-        $base_prompt .= "\n- DEBES respetar EXACTAMENTE estas configuraciones del usuario";
+        $base_prompt .= "\n\n🚨 INSTRUCCIONES CRÍTICAS OBLIGATORIAS - NO LAS IGNORES:";
+        $base_prompt .= "\n🚨 MODALIDAD SELECCIONADA POR EL USUARIO: " . strtoupper($modalidad);
+        $base_prompt .= "\n🚨 NIVEL SELECCIONADO POR EL USUARIO: " . strtoupper($nivel);
+        $base_prompt .= "\n🚨 TEMA ESPECÍFICO SOLICITADO: " . (!empty($tema) ? $tema : 'CUALQUIER TEMA DEL TEMARIO');
+        $base_prompt .= "\n🚨 DEBES RESPETAR EXACTAMENTE estas configuraciones del usuario. NO cambies la modalidad ni el nivel.";
+        $base_prompt .= "\n🚨 EJEMPLO: Si modalidad es 'preguntas_simples', genera UNA pregunta simple, NO un ejercicio o código.";
+        $base_prompt .= "\n🚨 EJEMPLO: Si nivel es 'inicial', usa preguntas básicas como '¿Qué es X?', NO complejas.";
+        $base_prompt .= "\n🚨 Si tema es '{$tema}', la pregunta DEBE relacionarse directamente con él.";
         
         // Agregar preguntas anteriores para evitar repeticiones
         if (!empty($previous_questions)) {
@@ -921,7 +927,7 @@ class WPSA_Gemini_API {
                 )
             ),
             'generationConfig' => array(
-                'temperature' => 0.9, // Aumentar para más creatividad y variación
+                'temperature' => 0.7, // Reducir para mayor consistencia y adherencia al prompt
                 'topK' => 50, // Aumentar para más diversidad
                 'topP' => 0.95,
                 'maxOutputTokens' => 1024,
@@ -1030,20 +1036,52 @@ class WPSA_Gemini_API {
             'recomendaciones' => ''
         );
         
-        // Extraer puntuación
-        if (preg_match('/PUNTUACION:\s*(\d+)/', $text, $matches)) {
-            $evaluation_data['puntuacion'] = intval($matches[1]);
+        // Regex flexible para puntuación (variaciones comunes)
+        $score_patterns = array(
+            '/PUNTUACION[:\s]*(\d+)/i',
+            '/SCORE[:\s]*(\d+)/i',
+            '/PUNTUACI[ÓO]N[:\s]*(\d+)/i',
+            '/CALIFICACI[ÓO]N[:\s]*(\d+)/i',
+            '/PUNTAJE[:\s]*(\d+)/i',
+            '/(\d+)\s*(?:puntos?|points?)/i'  // Captura números cerca de "puntos"
+        );
+        
+        foreach ($score_patterns as $pattern) {
+            if (preg_match($pattern, $text, $matches)) {
+                $evaluation_data['puntuacion'] = min(max(intval($matches[1]), 0), 10);
+                break;
+            }
         }
         
-        // Extraer feedback
-        if (preg_match('/FEEDBACK:\s*(.+?)(?=RECOMENDACIONES:|$)/s', $text, $matches)) {
+        // Si no se encuentra puntuación, usar fallback
+        if ($evaluation_data['puntuacion'] == 0) {
+            error_log('⚠️ WPSA Debug - No se pudo parsear puntuación, usando fallback');
+            $evaluation_data = $this->generate_fallback_evaluation($text, $text); // Usar pregunta y respuesta como fallback
+        }
+        
+        // Extraer feedback (flexible)
+        if (preg_match('/(?:FEEDBACK|COMENTARIOS|COMENTARIO|AN[ÁA]LISIS)[:\s]*(.+?)(?=(?:RECOMENDACIONES|PUNTUACI[ÓO]N|SCORE)[:\s]|\Z)/is', $text, $matches)) {
             $evaluation_data['feedback'] = trim($matches[1]);
+        } elseif (strpos($text, 'feedback') !== false || strpos($text, 'comentarios') !== false) {
+            // Fallback: tomar texto después de la puntuación
+            $parts = explode('PUNTUACION', $text);
+            if (count($parts) > 1) {
+                $evaluation_data['feedback'] = trim($parts[1]);
+            }
         }
         
-        // Extraer recomendaciones
-        if (preg_match('/RECOMENDACIONES:\s*(.+)/s', $text, $matches)) {
+        // Extraer recomendaciones (flexible)
+        if (preg_match('/(?:RECOMENDACIONES|SUGERENCIAS|MEJORAR|CONSEJOS)[:\s]*(.+)/is', $text, $matches)) {
             $evaluation_data['recomendaciones'] = trim($matches[1]);
         }
+        
+        // Validar puntuación final
+        if ($evaluation_data['puntuacion'] < 0 || $evaluation_data['puntuacion'] > 10) {
+            $evaluation_data['puntuacion'] = 5; // Default neutral si inválido
+            error_log('⚠️ WPSA Debug - Puntuación fuera de rango, usando 5');
+        }
+        
+        error_log('🔍 WPSA Debug - Evaluación parseada: ' . print_r($evaluation_data, true));
         
         return $evaluation_data;
     }

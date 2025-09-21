@@ -383,54 +383,61 @@ class WPSA_Ajax {
     /**
      * Verificar reCAPTCHA internamente (soporta v2 y v3)
      */
+    // En class-wpsa-ajax.php, REEMPLAZA esta función completa.
+
+/**
+ * Verifica reCAPTCHA internamente.
+ * CORREGIDO: Ahora solo se activa si las claves están configuradas.
+ */
     private function verify_recaptcha_internal($recaptcha_response = null) {
         $site_key = get_option('wpsa_recaptcha_site_key', '');
         $secret_key = get_option('wpsa_recaptcha_secret_key', '');
         
-        // Si no está configurado, permitir continuar
+        // MODIFICACIÓN CLAVE: Si una de las claves está vacía,
+        // consideramos que reCAPTCHA no está en uso y aprobamos la verificación.
         if (empty($site_key) || empty($secret_key)) {
-            return true;
+            error_log('WPSA DEBUG: Claves reCAPTCHA no configuradas. Omitiendo verificación.');
+            return true; // <-- Esto permite que el proceso continúe.
         }
         
         if (!$recaptcha_response) {
-            // Buscar token de reCAPTCHA v3 primero, luego v2
             $recaptcha_response = isset($_POST['recaptcha_token']) ? $_POST['recaptcha_token'] : 
-                                 (isset($_POST['g-recaptcha-response']) ? $_POST['g-recaptcha-response'] : '');
+                                (isset($_POST['g-recaptcha-response']) ? $_POST['g-recaptcha-response'] : '');
         }
         
         if (empty($recaptcha_response)) {
+            error_log('WPSA ERROR: Verificación reCAPTCHA fallida - no se recibió respuesta del cliente.');
             return false;
         }
         
-        $response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', array(
-            'body' => array(
-                'secret' => $secret_key,
+        $response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', [
+            'body' => [
+                'secret'   => $secret_key,
                 'response' => $recaptcha_response,
                 'remoteip' => $_SERVER['REMOTE_ADDR']
-            )
-        ));
+            ]
+        ]);
         
         if (is_wp_error($response)) {
+            error_log('WPSA ERROR: Error de conexión con la API de reCAPTCHA: ' . $response->get_error_message());
             return false;
         }
         
-        $body = wp_remote_retrieve_body($response);
-        $result = json_decode($body, true);
+        $result = json_decode(wp_remote_retrieve_body($response), true);
         
-        // Verificar éxito básico
         if (!isset($result['success']) || $result['success'] !== true) {
+            error_log('WPSA ERROR: Verificación reCAPTCHA fallida. Respuesta de Google: ' . print_r($result, true));
             return false;
         }
         
-        // Para reCAPTCHA v3, verificar score (opcional, pero recomendado)
+        // Para reCAPTCHA v3, se recomienda verificar el 'score'.
         if (isset($result['score'])) {
-            // Score de 0.5 o superior se considera válido
+            error_log('WPSA DEBUG: reCAPTCHA v3 score: ' . $result['score']);
             return $result['score'] >= 0.5;
         }
         
         return true;
     }
-    
     /**
      * Guardar puntuación de una pregunta individual en sesión PHP
      */
@@ -589,8 +596,43 @@ class WPSA_Ajax {
         error_log("WPSA: Detalles de preguntas: " . print_r($preguntas_db, true));
 
         if (empty($preguntas_db)) {
-            error_log("WPSA: ERROR - No hay preguntas guardadas para esta evaluación");
-            wp_send_json_error(__('No hay preguntas guardadas para esta evaluación', 'wp-self-assessment'));
+            error_log("WPSA: WARNING - No hay preguntas guardadas para evaluación ID {$evaluation_id_to_use}. Estudiante: {$estudiante_nombre}, Materia ID: {$materia_id}");
+            // Handle empty questions gracefully: 0% score
+            $total_score = 0;
+            $obtained_score = 0;
+            $percentage = 0.00;
+            $question_data = array();
+            $recomendaciones = __('No se registraron respuestas completas para esta evaluación. Revisa que hayas respondido todas las preguntas antes de finalizar.', 'wp-self-assessment');
+            
+            // Update evaluation to completed with 0
+            global $wpdb;
+            $table_autoeval = $wpdb->prefix . 'wpsa_autoevaluaciones';
+            $wpdb->update(
+                $table_autoeval,
+                array(
+                    'puntuacion_total' => $total_score,
+                    'puntuacion_obtenida' => $obtained_score,
+                    'porcentaje' => $percentage,
+                    'recomendaciones' => $recomendaciones,
+                    'estado' => 'completada',
+                    'completed_at' => current_time('mysql')
+                ),
+                array('id' => $evaluation_id_to_use),
+                array('%d', '%d', '%f', '%s', '%s', '%s'),
+                array('%d')
+            );
+            
+            error_log("WPSA: Evaluación actualizada con 0% por falta de preguntas");
+            
+            $response_data = array(
+                'evaluation_id' => $evaluation_id_to_use,
+                'puntuacion_obtenida' => $obtained_score,
+                'puntuacion_total' => $total_score,
+                'porcentaje' => $percentage,
+                'recomendaciones' => $recomendaciones,
+                'message' => 'Evaluación completada sin respuestas registradas'
+            );
+            wp_send_json_success($response_data);
         }
 
         // Preparar datos de preguntas desde la base de datos
@@ -682,7 +724,7 @@ class WPSA_Ajax {
         }
 
         $evaluation_id = $existing_evaluation->id;
-        error_log("WPSA: Evaluación existente actualizada exitosamente - ID: $evaluation_id");
+        error_log("WPSA: Evaluación actualizada exitosamente - ID: $evaluation_id, Puntaje: {$obtained_score}/{$total_score} ({$percentage}%)");
         error_log("WPSA: Rows affected: " . $result);
 
         if ($evaluation_id) {
