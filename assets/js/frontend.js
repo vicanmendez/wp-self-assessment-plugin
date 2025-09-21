@@ -207,15 +207,28 @@ jQuery(document).ready(function($) {
                 },
                 success: function(response) {
                     hideLoading();
-                    
+
                     if (response.success) {
                         // Guardar respuesta y evaluación
                         currentQuestion.respuesta_estudiante = respuesta;
                         currentQuestion.puntuacion_obtenida = response.data.puntuacion;
                         currentQuestion.feedback = response.data.feedback;
-                        
-                        // Mostrar feedback
-                        showFeedback(response.data);
+
+                        // Guardar pregunta individual en la base de datos
+                        saveIndividualQuestion(currentQuestion, respuesta, response.data)
+                            .then(() => {
+                                // Guardar también en sesión para el cálculo de puntuaciones
+                                return saveQuestionScoreToSession(currentEvaluation.currentQuestionIndex + 1, response.data.puntuacion, respuesta, response.data.feedback);
+                            })
+                            .then(() => {
+                                // Mostrar feedback después de guardar
+                                showFeedback(response.data);
+                            })
+                            .catch(error => {
+                                console.error('Error al guardar pregunta:', error);
+                                // Mostrar feedback de todos modos
+                                showFeedback(response.data);
+                            });
                     } else {
                         showError('Error al evaluar la respuesta: ' + response.data);
                     }
@@ -263,8 +276,21 @@ jQuery(document).ready(function($) {
         currentQuestion.respuesta_estudiante = '';
         currentQuestion.puntuacion_obtenida = 0;
         currentQuestion.feedback = 'Pregunta omitida';
-        
-        nextQuestion();
+
+        // Guardar pregunta omitida en la base de datos
+        saveIndividualQuestion(currentQuestion, '', { puntuacion: 0, feedback: 'Pregunta omitida' })
+            .then(() => {
+                // Guardar también en sesión
+                return saveQuestionScoreToSession(currentEvaluation.currentQuestionIndex + 1, 0, '', 'Pregunta omitida');
+            })
+            .then(() => {
+                nextQuestion();
+            })
+            .catch(error => {
+                console.error('Error al guardar pregunta omitida:', error);
+                // Continuar de todos modos
+                nextQuestion();
+            });
     }
     
     function nextQuestion() {
@@ -530,6 +556,78 @@ jQuery(document).ready(function($) {
         });
     }
     
+    // Función para guardar pregunta individual en la base de datos
+    function saveIndividualQuestion(questionData, studentAnswer, evaluationData) {
+        return new Promise((resolve, reject) => {
+            // Verificar reCAPTCHA v3 antes de enviar
+            verifyRecaptcha().then(function(recaptchaToken) {
+                $.ajax({
+                    url: wpsa_ajax.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'wpsa_save_individual_question',
+                        nonce: wpsa_ajax.nonce,
+                        materia_id: currentEvaluation.materia_id,
+                        estudiante_nombre: currentEvaluation.estudiante_nombre || 'Anónimo',
+                        question_text: questionData.pregunta,
+                        answer: studentAnswer,
+                        correct_answer: questionData.respuesta_correcta,
+                        score: evaluationData.puntuacion,
+                        feedback: evaluationData.feedback,
+                        recaptcha_token: recaptchaToken
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            console.log('✅ Pregunta individual guardada:', response.data);
+                            resolve(response.data);
+                        } else {
+                            console.error('❌ Error al guardar pregunta individual:', response.data);
+                            reject(response.data);
+                        }
+                    },
+                    error: function(error) {
+                        console.error('❌ Error de conexión al guardar pregunta:', error);
+                        reject(error);
+                    }
+                });
+            }).catch(function(error) {
+                console.error('❌ Error de reCAPTCHA al guardar pregunta:', error);
+                reject(error);
+            });
+        });
+    }
+
+    // Función para guardar puntuación de pregunta en sesión
+    function saveQuestionScoreToSession(questionNumber, score, answer, feedback) {
+        return new Promise((resolve, reject) => {
+            $.ajax({
+                url: wpsa_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'wpsa_save_question_score',
+                    nonce: wpsa_ajax.nonce,
+                    question_number: questionNumber,
+                    score: score,
+                    answer: answer,
+                    feedback: feedback
+                },
+                success: function(response) {
+                    if (response.success) {
+                        console.log('✅ Puntuación guardada en sesión:', response.data);
+                        resolve(response.data);
+                    } else {
+                        console.error('❌ Error al guardar puntuación en sesión:', response.data);
+                        reject(response.data);
+                    }
+                },
+                error: function(error) {
+                    console.error('❌ Error de conexión al guardar en sesión:', error);
+                    reject(error);
+                }
+            });
+        });
+    }
+
     // Función para guardar evaluación final en BD usando sesión PHP
     function saveFinalEvaluationToDatabase() {
         return new Promise((resolve, reject) => {
